@@ -142,8 +142,7 @@ jobs:
       - name: Install Dependencies
         run: >
           sudo apt-get update -qq
-
-          sudo apt-get install -qy cmake ninja-build
+          && sudo apt-get install -qy cmake ninja-build
           qt6-base-dev qt6-svg-dev qt6-tools-dev qt6-tools-dev-tools
           libtbb-dev
           libavcodec-dev libavformat-dev
@@ -191,52 +190,48 @@ jobs:
           cmake --build build --target install --parallel
 
       - name: Configure cmake
-        run: >
+        run: |
           mkdir build
-
-          cmake
-          -B build
-          -S .
-          -G Ninja
-          -DEIGEN_ROOT_DIR=/usr/include/eigen3
-          -DJSON_ROOT_DIR=/usr/include/jsoncpp
-          -DPCL_DIR=${{ github.workspace }}/pcl-cached/share/pcl-1.15
-          -DDLIB_ROOT=/usr/include
-          -DCCCORELIB_USE_TBB=ON
-          -DPLUGIN_EXAMPLE_GL=ON
-          -DPLUGIN_EXAMPLE_IO=ON
-          -DPLUGIN_EXAMPLE_STANDARD=ON
-          -DPLUGIN_GL_QEDL=ON
-          -DPLUGIN_GL_QSSAO=ON
-          -DPLUGIN_IO_QADDITIONAL=ON
-          -DPLUGIN_IO_QCORE=ON
-          -DPLUGIN_IO_QE57=ON
-          -DE57_RELEASE_LTO=OFF
-          -DPLUGIN_IO_QPHOTOSCAN=ON
-          -DPLUGIN_IO_QLAS=ON
-          -DPLUGIN_IO_QRDB=ON
-          -DPLUGIN_IO_QRDB_FETCH_DEPENDENCY=ON
-          -DPLUGIN_IO_QRDB_INSTALL_DEPENDENCY=ON
-          -DPLUGIN_STANDARD_QANIMATION=ON
-          -DQANIMATION_WITH_FFMPEG_SUPPORT=OFF
-          -DPLUGIN_STANDARD_QBROOM=ON
-          -DPLUGIN_STANDARD_QCANUPO=ON
-          -DPLUGIN_STANDARD_QCOMPASS=ON
-          -DPLUGIN_STANDARD_QCSF=ON
-          -DPLUGIN_STANDARD_QFACETS=ON
-          -DPLUGIN_STANDARD_QHOUGH_NORMALS=ON
-          -DPLUGIN_STANDARD_QHPR=ON
-          -DPLUGIN_STANDARD_MASONRY_QMANUAL_SEG=OFF
-          -DPLUGIN_STANDARD_MASONRY_QAUTO_SEG=OFF
-          -DPLUGIN_STANDARD_QM3C2=ON
-          -DPLUGIN_STANDARD_QPCV=ON
-          -DPLUGIN_STANDARD_QPOISSON_RECON=ON
-          -DPLUGIN_STANDARD_QSRA=ON
-          -DPLUGIN_STANDARD_QRANSAC_SD=ON
-          -DPLUGIN_STANDARD_QPCL=ON
-          -DPLUGIN_STANDARD_QCLOUDLAYERS=ON
-          -DPLUGIN_STANDARD_QVOXFALL=ON
-          -DBUILD_TESTING=ON
+          cmake -B build -S . -G Ninja \
+            -DEIGEN_ROOT_DIR=/usr/include/eigen3 \
+            -DJSON_ROOT_DIR=/usr/include/jsoncpp \
+            -DPCL_DIR=${{ github.workspace }}/pcl-cached/share/pcl-1.15 \
+            -DDLIB_ROOT=/usr/include \
+            -DCCCORELIB_USE_TBB=ON \
+            -DPLUGIN_EXAMPLE_GL=ON \
+            -DPLUGIN_EXAMPLE_IO=ON \
+            -DPLUGIN_EXAMPLE_STANDARD=ON \
+            -DPLUGIN_GL_QEDL=ON \
+            -DPLUGIN_GL_QSSAO=ON \
+            -DPLUGIN_IO_QADDITIONAL=ON \
+            -DPLUGIN_IO_QCORE=ON \
+            -DPLUGIN_IO_QE57=ON \
+            -DE57_RELEASE_LTO=OFF \
+            -DPLUGIN_IO_QPHOTOSCAN=ON \
+            -DPLUGIN_IO_QLAS=ON \
+            -DPLUGIN_IO_QRDB=ON \
+            -DPLUGIN_IO_QRDB_FETCH_DEPENDENCY=ON \
+            -DPLUGIN_IO_QRDB_INSTALL_DEPENDENCY=ON \
+            -DPLUGIN_STANDARD_QANIMATION=ON \
+            -DQANIMATION_WITH_FFMPEG_SUPPORT=OFF \
+            -DPLUGIN_STANDARD_QBROOM=ON \
+            -DPLUGIN_STANDARD_QCANUPO=ON \
+            -DPLUGIN_STANDARD_QCOMPASS=ON \
+            -DPLUGIN_STANDARD_QCSF=ON \
+            -DPLUGIN_STANDARD_QFACETS=ON \
+            -DPLUGIN_STANDARD_QHOUGH_NORMALS=ON \
+            -DPLUGIN_STANDARD_QHPR=ON \
+            -DPLUGIN_STANDARD_MASONRY_QMANUAL_SEG=OFF \
+            -DPLUGIN_STANDARD_MASONRY_QAUTO_SEG=OFF \
+            -DPLUGIN_STANDARD_QM3C2=ON \
+            -DPLUGIN_STANDARD_QPCV=ON \
+            -DPLUGIN_STANDARD_QPOISSON_RECON=ON \
+            -DPLUGIN_STANDARD_QSRA=ON \
+            -DPLUGIN_STANDARD_QRANSAC_SD=ON \
+            -DPLUGIN_STANDARD_QPCL=ON \
+            -DPLUGIN_STANDARD_QCLOUDLAYERS=ON \
+            -DPLUGIN_STANDARD_QVOXFALL=ON \
+            -DBUILD_TESTING=ON
 
       - name: Build
         run: cmake --build build --parallel
@@ -246,3 +241,45 @@ jobs:
 
       - name: Install
         run: sudo cmake --install build
+
+      # --- 新增：打包 AppImage 的步骤 ---
+      - name: Package AppImage
+        run: |
+          # 1. 下载打包工具
+          wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool-x86_64.AppImage
+
+          # 2. 创建 AppDir 目录结构
+          mkdir -p AppDir/usr/bin
+          mkdir -p AppDir/usr/lib
+          mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+          mkdir -p AppDir/usr/share/applications
+
+          # 3. 复制可执行文件和库文件
+          cp /usr/local/bin/CloudCompare AppDir/usr/bin/
+          cp /usr/local/lib/libCloudCompare.so* AppDir/usr/lib/ || true
+          cp /usr/local/lib/CloudCompare/* AppDir/usr/lib/ -r || true
+
+          # 4. 复制图标和桌面文件
+          cp resources/icons/CC.png AppDir/usr/share/icons/hicolor/256x256/apps/ || echo "Icon not found, using a placeholder"
+          cp resources/packaging/CloudCompare.desktop AppDir/usr/share/applications/ || echo "Desktop file not found"
+
+          # 5. 创建 AppRun 启动脚本
+          cat > AppDir/AppRun << 'EOF'
+          #!/bin/sh
+          HERE="$(dirname "$(readlink -f "${0}")")"
+          export PATH="${HERE}/usr/bin/:${PATH}"
+          export LD_LIBRARY_PATH="${HERE}/usr/lib/:${LD_LIBRARY_PATH}"
+          exec "${HERE}/usr/bin/CloudCompare" "$@"
+          EOF
+          chmod a+x AppDir/AppRun
+
+          # 6. 执行打包
+          ./appimagetool-x86_64.AppImage AppDir CloudCompare-custom-x86_64.AppImage
+
+      # --- 新增：上传 AppImage 产物的步骤 ---
+      - name: Upload AppImage
+        uses: actions/upload-artifact@v4
+        with:
+          name: CloudCompare-AppImage-${{ matrix.compiler }}
+          path: CloudCompare-custom-x86_64.AppImage
